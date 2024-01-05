@@ -4,14 +4,21 @@ from airflow import DAG
 from datetime import datetime, timedelta
 from airflow.operators.python import PythonOperator
 
+#declaring the url for fetching data from API
 base_url="https://randomuser.me/api/"
 
 def extract_use_data(ti):
+    """
+    fetching the data using API and pushing into the xcom
+    """
     response=requests.get(base_url)
     data=response.json()
     ti.xcom_push(key="extracted_data", value=data)
 
 def write_json(ti):
+    """
+    fetching the extracted data from xcom and writing it into the JSON file
+    """
     data=ti.xcom_pull(task_ids="extracted_data_task", key="extracted_data")
     timestamp=datetime.now().strftime("%Y-%m-%d-%H-%M")
     file_path=f"/home/varun/airflow/dags/output_{timestamp}.json"
