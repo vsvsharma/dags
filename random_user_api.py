@@ -1,5 +1,6 @@
 import json
 import requests
+import psycopg2
 import pandas as pd
 from airflow import DAG
 from datetime import datetime, timedelta
@@ -7,6 +8,24 @@ from airflow.operators.python import PythonOperator
 
 #declaring the url for fetching data from API
 base_url="https://randomuser.me/api/"
+
+host="localhost"
+user="postgres"
+password="postgres"
+dbname="userdb_airflow"
+conn=psycopg2.connect(
+    host=host, user=user, password=password, dbname=dbname
+)
+cursor=conn.cursor()
+tables_info=[
+        {'table_name': 'personal_details', 'xcom_key': 'personal_data_task', 'key':'person_data'},
+        {'table_name': 'address', 'xcom_key': 'address_data_task', 'key':'address_data'},
+        {'table_name': 'picture', 'xcom_key': 'picture_data_task', 'key':'picture_data'},
+        {'table_name': 'login', 'xcom_key': 'login_data_task', 'key':'login_data'},
+        {'table_name': 'location_tz', 'xcom_key': 'loc_tz_data_task', 'key':'loc_tz_data'},
+        {'table_name': 'encrypted_detail', 'xcom_key': 'encrypt_data_task', 'key':'encrypt_data'},
+        {'table_name': 'registration', 'xcom_key': 'registration_data_task', 'key':'reg_data'},
+    ]
 
 def extract_use_data(ti):
     """
@@ -29,6 +48,7 @@ def process_personal_details(ti):
     #Value for each column is being extracted from the main extracted data(fetched from API)
     person_data={
         "uuid":personal_dict["login"]["uuid"],
+        "gender":personal_dict["gender"],
         "title":personal_dict["name"]["title"],
         "first_name":personal_dict["name"]["first"],
         "last_name":personal_dict["name"]["last"],
@@ -146,23 +166,55 @@ def process_encrypted_details(ti):
     the whole data fetched from api is being pulled here.
     """
     user_data=ti.xcom_pull(task_ids="extracted_data_task", key="extracted_data")
-    encryp_dict=user_data["results"][0]
+    encrypt_dict=user_data["results"][0]
     #dictionary is being created for the columns of encryption detail table. 
     #Value for each column is being extracted from the main extracted data(fetched from API)
-    encryp_data={
-        "uuid":encryp_dict["login"]["uuid"],
-        "salt":encryp_dict["login"]["salt"],
-        "md5":encryp_dict["login"]["md5"],
-        "sha1":encryp_dict["login"]["sha1"],
-        "sha256":encryp_dict["login"]["sha256"]
+    encrypt_data={
+        "uuid":encrypt_dict["login"]["uuid"],
+        "salt":encrypt_dict["login"]["salt"],
+        "md5":encrypt_dict["login"]["md5"],
+        "sha1":encrypt_dict["login"]["sha1"],
+        "sha256":encrypt_dict["login"]["sha256"]
     }
     #The columns are being converted into DataFrame and then pushed to xcom.
-    encryp_df=pd.DataFrame([encryp_data])
-    ti.xcom_push(key="encryp_data", value=encryp_df)
+    encrypt_df=pd.DataFrame([encrypt_data])
+    ti.xcom_push(key="encrypt_data", value=encrypt_df)
+
+def insert_into_db(ti,tables_info,**kwargs):
+    """
+    Here the DataFrames are fetched from
+    """
+    try:
+        for current_table_info in tables_info:
+            table_name=current_table_info['table_name']
+            xcom_key=current_table_info['xcom_key']
+            key=current_table_info['key']
+            df=ti.xcom_pull(task_ids=xcom_key,key=key)
+            columns=",".join(df.columns)
+            value=",".join(["%s" for _ in df.columns])
+
+            df = df.where(pd.notna(df), None)
+            data_values = [tuple(row) for _, row in df.iterrows()]
+            query = f"INSERT INTO {table_name} ({columns}) VALUES ({value})" #SQL query to insert into the columns
+            try:
+                cursor.executemany(query, data_values)
+                print(f"Data inserted successfully into: {table_name}")
+            except Exception as e:
+                print(f"error inserting into {table_name} : {e}")
+                conn.rollback()
+                break
+        else:
+            conn.commit()
+    except Exception as e:
+        print(f"error inserting data {e}")
+    finally:
+        conn.close()
+
+    
 
 #Defining Dag
 dag=DAG("random_user_api",start_date=datetime(2024,1,1),
-        schedule_interval=timedelta(minutes=1), catchup=False)
+        schedule_interval=timedelta(seconds=10), catchup=False)
 
 #Operators are defined
 """
@@ -181,7 +233,7 @@ personal_data_operator=PythonOperator(
     dag=dag
 )
 address_data_operator=PythonOperator(
-    task_id="adderess_data_task",
+    task_id="address_data_task",
     python_callable=process_address,
     provide_context=True,
     dag=dag
@@ -205,7 +257,7 @@ loc_tz_operator=PythonOperator(
     dag=dag
 )
 encrypted_details_operaotor=PythonOperator(
-    task_id="encryp_data_task",
+    task_id="encrypt_data_task",
     python_callable=process_encrypted_details,
     provide_context=True,
     dag=dag
@@ -216,6 +268,14 @@ registration_operator=PythonOperator(
     provide_context=True,
     dag=dag
 )
+insert_into_db_operator=PythonOperator(
+    task_id="insert_all_tables_task",
+    python_callable=insert_into_db,
+    provide_context=True,
+    op_kwargs={'tables_info': tables_info},
+    dag=dag
+)
+
 
 #Set the task dependencies
 """
@@ -229,5 +289,13 @@ extract_data_operator >> login_data_operator
 extract_data_operator >> loc_tz_operator
 extract_data_operator >> encrypted_details_operaotor
 extract_data_operator >> registration_operator
+
+personal_data_operator >> insert_into_db_operator
+address_data_operator >> insert_into_db_operator
+picture_data_operator >> insert_into_db_operator
+login_data_operator >> insert_into_db_operator
+loc_tz_operator >> insert_into_db_operator
+encrypted_details_operaotor >> insert_into_db_operator
+registration_operator >> insert_into_db_operator
 
 
