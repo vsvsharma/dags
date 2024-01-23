@@ -1,13 +1,13 @@
 import json
-import requests
 import psycopg2
 import pandas as pd
 from airflow import DAG
+from kafka import KafkaConsumer
 from datetime import datetime, timedelta
 from airflow.operators.python import PythonOperator
 
 #declaring the url for fetching data from API
-base_url="https://randomuser.me/api/"
+
 
 host="localhost"
 user="postgres"
@@ -27,14 +27,32 @@ tables_info=[
         {'table_name': 'registration', 'xcom_key': 'registration_data_task', 'key':'reg_data'},
     ]
 
-def extract_use_data(ti):
-    """
-    fetching the data using API and pushing into the xcom
-    """
-    response=requests.get(base_url)
-    raw_data=response.json()
-    #fetched data will be pushed into the xcom, so that other functions can pull it.
-    ti.xcom_push(key="extracted_data", value=raw_data)
+def kafka_consumer(ti):
+    consumer = KafkaConsumer(
+        'random_user_fetching',
+        bootstrap_servers='localhost:9092',
+        max_poll_records=20,
+        value_deserializer=lambda m: json.loads(m.decode('utf-8')),
+        auto_offset_reset='earliest',
+        enable_auto_commit=False,  
+        group_id='my_grp'
+    )
+    data_list = []
+    max_messages = 20
+
+    try:
+        for message in consumer:
+            data = message.value
+            data_list.append(data)
+            if len(data_list) >= max_messages:
+                break
+    except Exception as e:
+        print(f"Error in Kafka consumer: {e}")
+    finally:
+        consumer.commit()
+
+    ti.xcom_push(key="extracted_data", value=data_list)
+
 
      
 def process_personal_details(ti):
@@ -43,24 +61,42 @@ def process_personal_details(ti):
     the whole data fetched from api is being pulled here.
     """
     user_data=ti.xcom_pull(task_ids="extracted_data_task", key="extracted_data")
-    personal_dict=user_data["results"][0]
+    person_data=[]
+    for item in user_data:
+        results=item['results']
     #dictionary is being created for the columns of personal detail table. 
     #Value for each column is being extracted from the main extracted data(fetched from API)
-    person_data={
-        "uuid":personal_dict["login"]["uuid"],
-        "gender":personal_dict["gender"],
-        "title":personal_dict["name"]["title"],
-        "first_name":personal_dict["name"]["first"],
-        "last_name":personal_dict["name"]["last"],
-        "email":personal_dict["email"],
-        "date_of_birth":personal_dict["dob"]["date"],
-        "age":personal_dict["dob"]["age"],
-        "phone":personal_dict["phone"],
-        "cell":personal_dict["cell"],
-        "nationality":personal_dict["nat"]
-    }
+    for result in results:
+        uuid=result["login"]["uuid"]
+        gender=result["gender"]
+        title=result["name"]["title"]
+        first_name=result["name"]["first"]
+        last_name=result["name"]["last"]
+        email=result["email"]
+        date_of_birth=result["dob"]["date"]
+        age=result["dob"]["age"]
+        phone=result["phone"]
+        cell=result["cell"]
+        nationality=result["nat"]
+        
+        personal_dict={
+            "uuid":uuid,
+            "gender":gender,
+            "title":title,
+            "first_name":first_name,
+            "last_name":last_name,
+            "email":email,
+            "date_of_birth":date_of_birth,
+            "age":age,
+            "phone":phone,
+            "cell":cell,
+            "nationality":nationality
+        }
+        person_data.append(personal_dict)
+    
     #The columns are being converted into DataFrame and then pushed to xcom.
-    person_df=pd.DataFrame([person_data])
+    person_df=pd.DataFrame(person_data)
+    print(f"The length of person df is: {len(person_df)}")
     ti.xcom_push(key="person_data", value=person_df)
 
 def process_address(ti):
@@ -69,20 +105,35 @@ def process_address(ti):
     the whole data fetched from api is being pulled here.
     """
     user_data=ti.xcom_pull(task_ids="extracted_data_task", key="extracted_data")
-    address_dict=user_data["results"][0]
+    address_data=[]
+    for item in user_data:
+        results=item['results']
+    
     #dictionary is being created for the columns of address table. 
     #Value for each column is being extracted from the main extracted data(fetched from API).
-    address_data={
-        "uuid":address_dict["login"]["uuid"],
-        "street_number":address_dict["location"]["street"]["number"],
-        "street_name":address_dict["location"]["street"]["name"],
-        "city":address_dict["location"]["city"],
-        "state":address_dict["location"]["state"],
-        "country":address_dict["location"]["country"],
-        "postcode":address_dict["location"]["postcode"]
-    }
+    for result in results:
+        uuid=result["login"]["uuid"]
+        street_number=result["location"]["street"]["number"]
+        street_name=result["location"]["street"]["name"]
+        city=result["location"]["city"]
+        state=result["location"]["state"]
+        country=result["location"]["country"]
+        postcode=result["location"]["postcode"]
+
+        address_dict={
+            "uuid":uuid,
+            "street_number":street_number,
+            "street_name":street_name,
+            "city":city,
+            "state":state,
+            "country":country,
+            "postcode":postcode
+        }
+        address_data.append(address_dict)
+    
     #The columns are being converted into DataFrame and then pushed to xcom.
-    address_df=pd.DataFrame([address_data])
+    address_df=pd.DataFrame(address_data)
+    print(f"The length of address df is: {len(address_df)}")
     ti.xcom_push(key="address_data", value=address_df)
 
 def process_picture(ti):
@@ -91,17 +142,28 @@ def process_picture(ti):
     the whole data fetched from api is being pulled here.
     """
     user_data=ti.xcom_pull(task_ids="extracted_data_task", key="extracted_data")
-    picture_dict=user_data["results"][0]
+    picture_data=[]
+    for item in user_data:
+        results=item['results']
     #dictionary is being created for the columns of picture table. 
     #Value for each column is being extracted from the main extracted data(fetched from API)
-    picture_data={
-        "uuid":picture_dict["login"]["uuid"],
-        "profile_pic_large":picture_dict["picture"]["large"],
-        "profile_pic_medium":picture_dict["picture"]["medium"],
-        "profile_pic_thumbnail":picture_dict["picture"]["thumbnail"]
-    }
+    for result in results:
+        uuid=result["login"]["uuid"],
+        profile_pic_large=result["picture"]["large"],
+        profile_pic_medium=result["picture"]["medium"],
+        profile_pic_thumbnail=result["picture"]["thumbnail"]
+
+        picture_dict={
+            "uuid":uuid,
+            "profile_pic_large":profile_pic_large,
+            "profile_pic_medium":profile_pic_medium,
+            "profile_pic_thumbnail":profile_pic_thumbnail
+        }
+        picture_data.append(picture_dict)
+    
     #The columns are being converted into DataFrame and then pushed to xcom.
-    picture_df=pd.DataFrame([picture_data])
+    picture_df=pd.DataFrame(picture_data)
+    print(f"The length of picture df is: {len(picture_df)}")
     ti.xcom_push(key="picture_data", value=picture_df)
 
 def process_login(ti):
@@ -110,16 +172,25 @@ def process_login(ti):
     the whole data fetched from api is being pulled here.
     """
     user_data=ti.xcom_pull(task_ids="extracted_data_task", key="extracted_data")
-    login_dict=user_data["results"][0]
+    login_data=[]
+    for item in user_data:
+        results=item['results']
     #dictionary is being created for the columns of login table. 
     #Value for each column is being extracted from the main extracted data(fetched from API).
-    login_data={
-        "uuid":login_dict["login"]["uuid"],
-        "username":login_dict["login"]["username"],
-        "password":login_dict["login"]["password"]
-    }
+    for result in results:
+        uuid=result["login"]["uuid"]
+        username=result["login"]["username"]
+        password=result["login"]["password"]
+
+        login_dict={
+            "uuid":uuid,
+            "username":username,
+            "password":password
+        }
+        login_data.append(login_dict)
     #The columns are being converted into DataFrame and then pushed to xcom.
-    login_df=pd.DataFrame([login_data])
+    login_df=pd.DataFrame(login_data)
+    print(f"The length of login df is: {len(login_df)}")
     ti.xcom_push(key="login_data", value=login_df)
 
 def process_location_tz(ti):
@@ -128,18 +199,29 @@ def process_location_tz(ti):
     the whole data fetched from api is being pulled here.
     """
     user_data=ti.xcom_pull(task_ids="extracted_data_task", key="extracted_data")
-    loc_tz_dict=user_data["results"][0]
+    loc_tz_data=[]
+    for item in user_data:
+        results=item['results']
     #dictionary is being created for the columns of location table. 
     #Value for each column is being extracted from the main extracted data(fetched from API).
-    loc_tz_data={
-        "uuid":loc_tz_dict["login"]["uuid"],
-        "latitude":loc_tz_dict["location"]["coordinates"]["latitude"],
-        "longitude":loc_tz_dict["location"]["coordinates"]["longitude"],
-        "timezone_offset":loc_tz_dict["location"]["timezone"]["offset"],
-        "timezone_description":loc_tz_dict["location"]["timezone"]["description"]
-    }
+    for result in results:
+        uuid=result["login"]["uuid"]
+        latitude=result["location"]["coordinates"]["latitude"]
+        longitude=result["location"]["coordinates"]["longitude"]
+        timezone_offset=result["location"]["timezone"]["offset"]
+        timezone_description=result["location"]["timezone"]["description"]
+
+        loc_tz_dict={
+            "uuid":uuid,
+            "latitude":latitude,
+            "longitude":longitude,
+            "timezone_offset":timezone_offset,
+            "timezone_description":timezone_description
+        }
+        loc_tz_data.append(loc_tz_dict)
     #The columns are being converted into DataFrame and then pushed to xcom.
-    loc_tz_df=pd.DataFrame([loc_tz_data])
+    loc_tz_df=pd.DataFrame(loc_tz_data)
+    print(f"The length of loc_tz df is: {len(loc_tz_df)}")
     ti.xcom_push(key="loc_tz_data", value=loc_tz_df)
 
 def process_registration(ti):
@@ -148,16 +230,25 @@ def process_registration(ti):
     the whole data fetched from api is being pulled here.
     """
     user_data=ti.xcom_pull(task_ids="extracted_data_task", key="extracted_data")
-    reg_dict=user_data["results"][0]
+    reg_data=[]
+    for item in user_data:
+        results=item['results']
     #dictionary is being created for the columns of registration table. 
     #Value for each column is being extracted from the main extracted data(fetched from API).
-    reg_data={
-        "uuid":reg_dict["login"]["uuid"],
-        "registration_date":reg_dict["registered"]["date"],
-        "registration_age":reg_dict["registered"]["age"]
-    }
+    for result in results:
+        uuid=result["login"]["uuid"]
+        registration_date=result["registered"]["date"]
+        registration_age=result["registered"]["age"]
+
+        reg_dict={
+            "uuid":uuid,
+            "registration_date":registration_date,
+            "registration_age":registration_age
+        }
+        reg_data.append(reg_dict)
     #The columns are being converted into DataFrame and then pushed to xcom.
-    reg_df=pd.DataFrame([reg_data])
+    reg_df=pd.DataFrame(reg_data)
+    print(f"The length of reg df is: {len(reg_df)}")
     ti.xcom_push(key="reg_data", value=reg_df)
 
 def process_encrypted_details(ti):
@@ -166,18 +257,29 @@ def process_encrypted_details(ti):
     the whole data fetched from api is being pulled here.
     """
     user_data=ti.xcom_pull(task_ids="extracted_data_task", key="extracted_data")
-    encrypt_dict=user_data["results"][0]
+    encrypt_data=[]
+    for item in user_data:
+        results=item['results']
     #dictionary is being created for the columns of encryption detail table. 
     #Value for each column is being extracted from the main extracted data(fetched from API)
-    encrypt_data={
-        "uuid":encrypt_dict["login"]["uuid"],
-        "salt":encrypt_dict["login"]["salt"],
-        "md5":encrypt_dict["login"]["md5"],
-        "sha1":encrypt_dict["login"]["sha1"],
-        "sha256":encrypt_dict["login"]["sha256"]
-    }
+    for result in results:
+        uuid=result["login"]["uuid"]
+        salt=result["login"]["salt"]
+        md5=result["login"]["md5"]
+        sha1=result["login"]["sha1"]
+        sha256=result["login"]["sha256"]
+
+        encrypt_dict={
+            "uuid":uuid,
+            "salt":salt,
+            "md5":md5,
+            "sha1":sha1,
+            "sha256":sha256
+        }
+        encrypt_data.append(encrypt_dict)
     #The columns are being converted into DataFrame and then pushed to xcom.
-    encrypt_df=pd.DataFrame([encrypt_data])
+    encrypt_df=pd.DataFrame(encrypt_data)
+    print(f"The length of encrypt df is: {len(encrypt_df)}")
     ti.xcom_push(key="encrypt_data", value=encrypt_df)
 
 def insert_into_db(ti,tables_info,**kwargs):
@@ -214,7 +316,7 @@ def insert_into_db(ti,tables_info,**kwargs):
 
 #Defining Dag
 dag=DAG("random_user_api",start_date=datetime(2024,1,1),
-        schedule_interval=timedelta(seconds=10), catchup=False)
+        schedule_interval=timedelta(minutes=2), catchup=False)
 
 #Operators are defined
 """
@@ -222,7 +324,7 @@ Operators are defined to call the different functions and task Ids are defined r
 """
 extract_data_operator=PythonOperator(
     task_id="extracted_data_task",
-    python_callable=extract_use_data,
+    python_callable=kafka_consumer,
     provide_context=True,
     dag=dag
 )
