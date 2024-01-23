@@ -1,0 +1,66 @@
+{
+    "results": [
+        {
+            "gender": "male",
+            "name": {
+                "title": "Mr",
+                "first": "Axel",
+                "last": "Duval"
+            },
+            "location": {
+                "street": {
+                    "number": 6355,
+                    "name": "Rue Dumenge"
+                },
+                "city": "N\u00eemes",
+                "state": "Ari\u00e8ge",
+                "country": "France",
+                "postcode": 11576,
+                "coordinates": {
+                    "latitude": "-14.0703",
+                    "longitude": "-45.6222"
+                },
+                "timezone": {
+                    "offset": "-1:00",
+                    "description": "Azores, Cape Verde Islands"
+                }
+            },
+            "email": "axel.duval@example.com",
+            "login": {
+                "uuid": "146ada10-91e3-4ea2-bb20-e71fd5534364",
+                "username": "blackbear910",
+                "password": "prime",
+                "salt": "Ke5p3Ojl",
+                "md5": "59d28cfeaedfe377045e809275bbff43",
+                "sha1": "331875c31bb7045c293aae4af80857b172f28190",
+                "sha256": "6bed0effa73afefd381a324bb0e1f031724b52daf0f3fa65bc05155f32671fe0"
+            },
+            "dob": {
+                "date": "1971-05-13T16:17:12.618Z",
+                "age": 52
+            },
+            "registered": {
+                "date": "2003-11-06T16:38:09.656Z",
+                "age": 20
+            },
+            "phone": "05-33-22-13-30",
+            "cell": "06-66-54-38-11",
+            "id": {
+                "name": "INSEE",
+                "value": "1710435888882 78"
+            },
+            "picture": {
+                "large": "https://randomuser.me/api/portraits/men/96.jpg",
+                "medium": "https://randomuser.me/api/portraits/med/men/96.jpg",
+                "thumbnail": "https://randomuser.me/api/portraits/thumb/men/96.jpg"
+            },
+            "nat": "FR"
+        }
+    ],
+    "info": {
+        "seed": "e89113807a7717b8",
+        "results": 1,
+        "page": 1,
+        "version": "1.4"
+    }
+}

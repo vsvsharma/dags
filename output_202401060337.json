@@ -1,0 +1,66 @@
+{
+    "results": [
+        {
+            "gender": "male",
+            "name": {
+                "title": "Mr",
+                "first": "Ali",
+                "last": "\u00c7etiner"
+            },
+            "location": {
+                "street": {
+                    "number": 4311,
+                    "name": "Kushimoto Sk"
+                },
+                "city": "Burdur",
+                "state": "Gaziantep",
+                "country": "Turkey",
+                "postcode": 71111,
+                "coordinates": {
+                    "latitude": "67.2137",
+                    "longitude": "-77.3242"
+                },
+                "timezone": {
+                    "offset": "+3:30",
+                    "description": "Tehran"
+                }
+            },
+            "email": "ali.cetiner@example.com",
+            "login": {
+                "uuid": "0e96325a-0de3-49ac-8223-8c1ef85ce813",
+                "username": "blackelephant578",
+                "password": "bologna",
+                "salt": "b13oLQVG",
+                "md5": "282b4b69e8915e77559716c3dda558eb",
+                "sha1": "b1a4f57fb72fa86e7fa8ef481232056427ca50a0",
+                "sha256": "5fec43431957db75746c90c9d00a0672bdbe16913bd9f1e754080515eedcfad2"
+            },
+            "dob": {
+                "date": "1989-09-14T08:20:03.839Z",
+                "age": 34
+            },
+            "registered": {
+                "date": "2004-07-12T05:45:37.183Z",
+                "age": 19
+            },
+            "phone": "(953)-785-1112",
+            "cell": "(099)-942-5792",
+            "id": {
+                "name": "",
+                "value": null
+            },
+            "picture": {
+                "large": "https://randomuser.me/api/portraits/men/92.jpg",
+                "medium": "https://randomuser.me/api/portraits/med/men/92.jpg",
+                "thumbnail": "https://randomuser.me/api/portraits/thumb/men/92.jpg"
+            },
+            "nat": "TR"
+        }
+    ],
+    "info": {
+        "seed": "d2610b1069c53328",
+        "results": 1,
+        "page": 1,
+        "version": "1.4"
+    }
+}

@@ -1,0 +1,66 @@
+{
+    "results": [
+        {
+            "gender": "male",
+            "name": {
+                "title": "Mr",
+                "first": "Eelis",
+                "last": "Leinonen"
+            },
+            "location": {
+                "street": {
+                    "number": 2433,
+                    "name": "H\u00e4meentie"
+                },
+                "city": "Nousiainen",
+                "state": "Southern Ostrobothnia",
+                "country": "Finland",
+                "postcode": 26374,
+                "coordinates": {
+                    "latitude": "-29.9740",
+                    "longitude": "-24.6709"
+                },
+                "timezone": {
+                    "offset": "+8:00",
+                    "description": "Beijing, Perth, Singapore, Hong Kong"
+                }
+            },
+            "email": "eelis.leinonen@example.com",
+            "login": {
+                "uuid": "28d349c2-06f1-4bae-abad-42380fa38087",
+                "username": "redswan355",
+                "password": "qwerqwer",
+                "salt": "dy8gRP6P",
+                "md5": "e84a656132adea82957e408b24b658e0",
+                "sha1": "98eb3b4caf0da55c6af485ea3db0ebec4e48adea",
+                "sha256": "c111539346bfbcd14e8559ae072d677db1c84793f500edb0d2f829f7b882c68b"
+            },
+            "dob": {
+                "date": "1951-10-21T06:57:59.596Z",
+                "age": 72
+            },
+            "registered": {
+                "date": "2006-10-07T02:14:59.349Z",
+                "age": 17
+            },
+            "phone": "02-962-505",
+            "cell": "044-466-79-58",
+            "id": {
+                "name": "HETU",
+                "value": "NaNNA919undefined"
+            },
+            "picture": {
+                "large": "https://randomuser.me/api/portraits/men/56.jpg",
+                "medium": "https://randomuser.me/api/portraits/med/men/56.jpg",
+                "thumbnail": "https://randomuser.me/api/portraits/thumb/men/56.jpg"
+            },
+            "nat": "FI"
+        }
+    ],
+    "info": {
+        "seed": "b2e46121d33b292e",
+        "results": 1,
+        "page": 1,
+        "version": "1.4"
+    }
+}
